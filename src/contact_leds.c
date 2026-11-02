@@ -8,6 +8,7 @@
 
 #include "app_config.h"
 #include "config_store.h"
+#include "hook.h"
 #include "pins.h"
 #include "schedule.h"
 #include "secret.h"
@@ -49,6 +50,11 @@ static void leds_task(void *arg)
                 cfg_contact_t c;
                 const bool has = config_get_contact(i, &c);
                 on = can_call && !asleep && has && schedule_available(i);
+            }
+            /* Pressed with the handset down: wink, then back to the above. */
+            bool nudge;
+            if (hook_nudge_light(i, ms, &nudge)) {
+                on = nudge;
             }
             gpio_set_level(pins.lamp[i], on ? 1 : 0);
         }

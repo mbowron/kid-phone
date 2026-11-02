@@ -14,6 +14,7 @@
 
 #include "app_config.h"
 #include "config_store.h"
+#include "hook.h"
 #include "modes.h"
 #include "pins.h"
 #include "schedule.h"
@@ -360,6 +361,9 @@ static esp_err_t h_status(httpd_req_t *req)
     cJSON_AddBoolToObject(o, "time_synced", schedule_time_synced());
 
     cJSON_AddBoolToObject(o, "handset", usb_audio_handset_connected());
+    if (hook_present()) {
+        cJSON_AddStringToObject(o, "hook", hook_off() ? "up" : "down");
+    }
 
     cJSON *call = cJSON_AddObjectToObject(o, "call");
     cJSON_AddStringToObject(call, "state", sip_call_state_name(sip_call_state()));

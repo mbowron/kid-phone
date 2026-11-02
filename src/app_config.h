@@ -36,12 +36,13 @@
 #define APP_ASSIGNABLE_GPIOS    {1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21, 38, 39, 40, 41, 42, 47}
 #define APP_NUM_ASSIGNABLE      24
 /* Pins used when NVS has no "pins" entry (every phone set up before 0.5.0,
- * and after a factory reset): four buttons on GPIO 4-7 with lights on 15-18.
+ * and after a factory reset): five buttons on GPIO 4-8 with lights on 15-18
+ * and 9 (this fork; upstream has four).
  * They sit next to each other on the left header, so the buttons share one
  * run and the LEDs another. */
-#define APP_DEFAULT_BUTTONS     4
-#define APP_BUTTON_GPIOS        {4, 5, 6, 7}
-#define APP_CONTACT_LED_GPIOS   {15, 16, 17, 18}
+#define APP_DEFAULT_BUTTONS     5
+#define APP_BUTTON_GPIOS        {4, 5, 6, 7, 8}
+#define APP_CONTACT_LED_GPIOS   {15, 16, 17, 18, 9}
 #define APP_BUTTON_DEBOUNCE_MS  30
 #define APP_BUTTON_POLL_MS      5
 /* Contact buttons with secret messages off (the default) only call and hang
@@ -80,6 +81,21 @@
 #define APP_NTP_SERVER_1        "pool.ntp.org"
 #define APP_NTP_SERVER_2        "time.google.com"
 
+/* Hook switch (hook.c): a lever microswitch under the handset cradle, closed
+ * to GND while the handset rests on it, internal pull-up. -1 = no hook switch
+ * (stock behavior). This pin is never offered as a button or light on the
+ * setup page. A broken wire reads as "lifted", so the phone then still calls
+ * the way it did before the hook switch. */
+#define APP_HOOK_GPIO           10
+/* Longer than the buttons: a handset dropped onto the lever rocks a bit. */
+#define APP_HOOK_DEBOUNCE_MS    80
+/* Dial tone stops after this long with the handset up and nothing happening,
+ * so a handset left off the hook goes quiet instead of humming all day. */
+#define APP_DIAL_TONE_TIMEOUT_MS 30000
+/* A button pressed with the handset down winks its light this many times. */
+#define APP_HOOK_NUDGE_BLINKS   2
+#define APP_HOOK_NUDGE_HALF_MS  150
+
 /* A call that Twilio answers and then hangs up within this long most likely
  * never reached the far end (geo permissions, trial account). twilio/voice.js
  * (NO_ANSWER_PAUSE_S) keeps its "didn't answer" ending longer than this:
@@ -102,8 +118,9 @@
  * call or refused press, ringback and the call itself, then silence again.
  * The contact lights show whether the phone can call. 1: the old idle status
  * tones (dial tone when ready, slow beep with no WiFi, reorder when not set
- * up); meant to come back as "dial tone only off-hook" once a hook switch
- * exists. */
+ * up). With a hook switch (APP_HOOK_GPIO >= 0) this setting is ignored: the
+ * status tones play while the handset is lifted, for up to
+ * APP_DIAL_TONE_TIMEOUT_MS. */
 #define APP_IDLE_DIAL_TONE      0
 
 /* Tone start, stop and cadence edges ramp over this long (no clicks). */

@@ -6,7 +6,7 @@
  * toolchain: WiFi over Improv Serial (browser flasher), then Twilio from the
  * phone's own web page (http://kidphone.local/). Up to CFG_MAX_CONTACTS contact
  * buttons, each with an optional LED, on pins the parent picks on the setup
- * page (pins.h; with none saved, buttons on GPIO 4-7 and lights on 15-18):
+ * page (pins.h; with none saved, buttons on GPIO 4-8, lights on 15-18 and 9):
  *   idle, press i             call contact i (a spoken prompt, then a short
  *                             busy tone, if it is bedtime, the slot is empty
  *                             or the contact is outside their available hours)
@@ -22,6 +22,9 @@
  *   dedicated                 idle: a press starts a secret (no number)
  *   while recording           a press of the same button stops it
  * In a call every button still hangs up on the press edge.
+ * With a hook switch (hook.h, APP_HOOK_GPIO): lifting the handset gives a
+ * dial tone and arms the buttons; putting it down hangs up (or stops a
+ * secret); a press with the handset down only winks that button's light.
  * The board's BOOT button (APP_BOOT_GPIO, out of a child's reach):
  *   idle, short press         cycle the stage 1 audio test modes A-D
  *   hold 10 s                 factory reset (erase config, reboot into setup);
@@ -45,6 +48,7 @@
 #include "config_store.h"
 #include "improv.h"
 #include "contact_leds.h"
+#include "hook.h"
 #include "modes.h"
 #include "pins.h"
 #include "prompts.h"
@@ -97,26 +101,23 @@ app_mode_t app_mode_get(void)
     if (t >= 0) {
         return (app_mode_t)t;
     }
-#if APP_IDLE_DIAL_TONE
-    /* Idle: the handset tells the status. Dial tone only when really ready. */
-    if (!wifi_is_connected()) {
+    /* Idle. With a hook switch, the handset tells the status while it is
+     * lifted (dial tone only when really ready), until the dial tone timeout.
+     * Without one, APP_IDLE_DIAL_TONE decides; the default is silence. */
+    const bool status_tone = hook_present() ? hook_dial_tone_due() : APP_IDLE_DIAL_TONE;
+    if (status_tone && !wifi_is_connected()) {
         return MODE_NO_WIFI;
     }
     if (now_ms() < atomic_load(&s_busy_until_ms)) {
         return MODE_BUSY;
     }
+    if (!status_tone) {
+        return MODE_D_SILENCE;
+    }
     if (!config_is_provisioned()) {
         return MODE_SETUP_NEEDED;
     }
     return MODE_C_DIAL_TONE;
-#else
-    /* Idle: silent (no hook switch yet). Only the busy tone that follows a
-     * press or a failed call; the contact lights show the status. */
-    if (now_ms() < atomic_load(&s_busy_until_ms)) {
-        return MODE_BUSY;
-    }
-    return MODE_D_SILENCE;
-#endif
 }
 
 const char *app_mode_name(app_mode_t m)
@@ -215,6 +216,11 @@ static void check_call_result(uint32_t *seen)
  * secrets alike). */
 static bool press_blocked(int idx)
 {
+    if (!hook_off()) {
+        ESP_LOGI(TAG, "BUTTON %d: ignored, the handset is down", idx);
+        hook_nudge(idx);
+        return true;
+    }
     if (prompt_active()) {
         ESP_LOGI(TAG, "BUTTON %d: ignored, prompt playing", idx);
         return true;
@@ -272,6 +278,22 @@ static void on_press_idle(int idx)
     atomic_store(&s_test_mode, -1); /* back to the normal idle sound after the call */
     atomic_store(&s_busy_until_ms, 0);
     sip_call_contact(idx);
+}
+
+/* The handset went down: end whatever it was being used for. A call started
+ * from the setup page with the handset already down is left alone (only the
+ * put-down edge hangs up). */
+static void on_hang_up(void)
+{
+    if (sip_call_state() != CALL_IDLE) {
+        ESP_LOGI(TAG, "handset down: hang up (state %s)", sip_call_state_name(sip_call_state()));
+        sip_call_hangup();
+    }
+    if (secret_active()) {
+        ESP_LOGI(TAG, "handset down: stop the secret");
+        secret_press(secret_slot()); /* same as pressing its own button */
+    }
+    atomic_store(&s_busy_until_ms, 0); /* no busy tone into an empty cradle */
 }
 
 /* Start a secret message on slot idx (a dedicated button's press, or a
@@ -504,8 +526,15 @@ static void button_task(void *arg)
     };
     ESP_ERROR_CHECK(gpio_config(&boot_cfg));
     button_t boot = {.gpio = APP_BOOT_GPIO, .stable = 1, .last_raw = 1};
+    hook_init();
     uint32_t result_seen = sip_result_seq();
     while (1) {
+        if (hook_poll() == -1) {
+            on_hang_up();
+        }
+        if (sip_call_state() != CALL_IDLE || prompt_active() || secret_active()) {
+            hook_activity(); /* the dial tone timeout counts from the end of it */
+        }
         check_call_result(&result_seen);
         /* Pins saved on the setup page: apply them live, every 100 ms at most. */
         if (++gen_poll >= 100 / APP_BUTTON_POLL_MS) {

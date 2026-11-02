@@ -19,7 +19,7 @@
 
 #include "config_store.h"
 
-/* The 0.4.x wiring: buttons 4-7, lights 15-18. */
+/* The default wiring (app_config.h): buttons 4-8, lights 15-18 and 9. */
 void pins_defaults(cfg_pins_t *out);
 
 /* True if a parent may assign this GPIO (APP_ASSIGNABLE_GPIOS). */

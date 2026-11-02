@@ -785,7 +785,8 @@ function render() {
   setText("s-wifi", w.connected ? "Connected to " + w.ssid + (w.ip ? " (" + w.ip + ")" : "") : "Not connected", w.connected ? "good" : "bad");
   renderWifi(w);
   setText("s-tw", t.provisioned ? "Ready" : "Not set up yet", t.provisioned ? "good" : "bad");
-  setText("s-hs", st.handset ? "Plugged in" : "Not detected (plug it into the USB port marked OTG)", st.handset ? "good" : "bad");
+  const hook = st.hook === "up" ? ", picked up" : st.hook === "down" ? ", on the hook" : "";
+  setText("s-hs", st.handset ? "Plugged in" + hook : "Not detected (plug it into the USB port marked OTG)", st.handset ? "good" : "bad");
   setText("s-clock", st.time_synced ? "Synced" : "Clock not synced (calls are allowed at any time until it is)", st.time_synced ? "good" : "bad");
   setText("s-from", t.caller_id || "Not set up yet");
   show("r-key", t.provisioned);

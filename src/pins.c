@@ -35,6 +35,9 @@ void pins_defaults(cfg_pins_t *out)
 
 bool pins_is_assignable(int gpio)
 {
+    if (gpio == APP_HOOK_GPIO) {
+        return false; /* the hook switch owns it (hook.c) */
+    }
     for (int i = 0; i < APP_NUM_ASSIGNABLE; i++) {
         if (k_assignable[i] == gpio) {
             return true;
@@ -45,8 +48,12 @@ bool pins_is_assignable(int gpio)
 
 int pins_assignable(int *out, int max)
 {
-    int n = max < APP_NUM_ASSIGNABLE ? max : APP_NUM_ASSIGNABLE;
-    memcpy(out, k_assignable, sizeof(int) * (size_t)n);
+    int n = 0;
+    for (int i = 0; i < APP_NUM_ASSIGNABLE && n < max; i++) {
+        if (k_assignable[i] != APP_HOOK_GPIO) {
+            out[n++] = k_assignable[i];
+        }
+    }
     return n;
 }
 

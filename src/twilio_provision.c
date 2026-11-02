@@ -1325,7 +1325,7 @@ static bool full_setup(prov_t *p)
         return fail(p, "Could not save the settings on the phone.", "Restart the phone and run setup again.");
     }
     refresh_key(p, true);
-#if APP_IDLE_DIAL_TONE
+#if APP_IDLE_DIAL_TONE || APP_HOOK_GPIO >= 0
     step("All set! Pick up the handset: you should hear a dial tone.");
 #else
     step("All set! The lights on the phone are on for everyone who can be called now.");
