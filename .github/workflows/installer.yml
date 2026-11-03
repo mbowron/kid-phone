@@ -1,0 +1,65 @@
+# Build the firmware and publish the browser installer (web/) to GitHub Pages.
+#
+# Every push to main rebuilds the image, so the installer at
+# https://mbowron.github.io/kid-phone/ always flashes the latest firmware.
+# Version shown in the installer: <PROJECT_VER>-<short commit>.
+name: Browser installer
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini', 'dependencies.lock') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build firmware
+        run: pio run -e esp32s3
+
+      - name: Merge the installer image
+        run: |
+          # A public image must never carry credentials (build_web_bin.sh also refuses).
+          test ! -f src/secrets.h
+          ver="$(sed -n 's/^set(PROJECT_VER "\(.*\)")$/\1/p' CMakeLists.txt)-${GITHUB_SHA::7}"
+          PIO="$(command -v pio)" PY="$(command -v python)" \
+          ESPTOOL="$HOME/.platformio/packages/tool-esptoolpy/esptool.py" \
+            scripts/build_web_bin.sh --version "$ver"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
