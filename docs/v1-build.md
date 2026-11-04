@@ -8,14 +8,14 @@ v1 = five lit buttons, a hook switch, outgoing calls only. No incoming calls, no
 
 | Before | Now | Why |
 |---|---|---|
-| 5 MOSFETs + 10 resistors | One **ULN2803A** chip | Eight lamp switches in one chip, resistors built in |
+| 5 MOSFETs + 10 resistors | One **ULN2803A breakout board** | Eight lamp switches in one chip, resistors built in |
 | Perfboard shield with soldered headers and JST connectors | **Screw-terminal breakout** for the ESP32 + a small lamp-driver board | Wires go into screw terminals; no JST crimping |
 | Separate USB-C power input, diode, capacitors | **Power through the board's COM port** | One port for power and flashing, brought to the back panel |
 | Hand-crimped button wires | **Pre-crimped arcade harness** | Push onto the button tabs; no crimper needed |
 | Soldered ground and 12 V runs | **Lever connectors** (Wago 221) | Bus wires snap together and come apart for service |
 | Amp, speaker, grille | Gone | Not needed without incoming calls |
 
-Soldering left: the USB-OTG pad on the board, and the ULN2803A board (socket, a few terminals, a handful of joints).
+Soldering left: the USB-OTG pad on the board, and about a dozen wires into the ULN2803A breakout.
 
 ## 1. Parts to buy
 
@@ -28,9 +28,7 @@ Soldering left: the USB-OTG pad on the board, and the ULN2803A board (socket, a 
 | USB-C retro telephone handset with its own USB audio chip | 1 | $8 | Same as the guide |
 | EG STARTS 10x 12 V LED arcade push buttons (5 colors) | 1 pack | $25 | Two of each color = a full spare set |
 | MT3608 boost converter module | 1 (5-pack) | $8 | 5 V → 12 V for the lamps. **Set to 12 V with a meter before connecting lamps** (13 V if the lamps look dim). |
-| ULN2803A, DIP-18 | 2 | $3 | One spare |
-| 18-pin DIP socket | 1 | $1 | So the chip is replaceable |
-| Small perfboard (5 × 7 cm) + 2-pin screw terminal blocks, 5.08 mm | 1 + 8 | $8 | The lamp-driver board |
+| ULN2803A breakout board (labeled 1B–8B, 1C–8C, GND, COM) | 2 | $8 | The lamp driver. One spare. Solder wires straight into its holes; mount on its two holes. |
 | USB-C charger 5 V / 2 A | 1 | $0–12 | |
 | Panel-mount USB-C extension, male → female, **data-rated**, ~30 cm | 1 | $10 | COM port to the back panel: power and flashing through one port |
 
@@ -69,7 +67,7 @@ Soldering left: the USB-OTG pad on the board, and the ULN2803A board (socket, a 
 
 | Tool | Notes |
 |---|---|
-| Soldering iron | OTG pad + the lamp-driver board |
+| Soldering iron | OTG pad + wires into the ULN2803A breakout |
 | Multimeter | Setting the MT3608, checking the reed sensor |
 | Small flat screwdriver | Screw terminals |
 | Wire strippers, flush cutters | |
@@ -115,13 +113,13 @@ Confirm pin positions against your board's silkscreen.
 
 | From | → To |
 |---|---|
-| Light GPIO 15, 16, 17, 18, 9 | ULN2803A inputs 1B–5B (pins 1–5) |
-| ULN2803A GND (pin 9) | GND bus |
-| ULN2803A outputs 1C–5C (pins 18–14) | Lamp − of buttons 1–5 |
+| Light GPIO 15, 16, 17, 18, 9 | Breakout 1B, 2B, 3B, 4B, 5B |
+| Breakout GND | GND bus |
+| Breakout 1C–5C | Lamp − of buttons 1–5 |
 | Every lamp + | 12 V bus |
-| ULN2803A COM (pin 10) | Leave unconnected |
+| Breakout COM, 6B–8B, 6C–8C | Leave unconnected |
 
-Input 1 (pin 1) pairs with output 1 (pin 18), input 2 (pin 2) with output 2 (pin 17), and so on. If a lamp stays dark, swap its two wires.
+The ESP32's 3.3 V outputs drive the ULN2803A fine at the lamps' ~17 mA. If a lamp stays dark, swap its two wires.
 
 **Power:**
 
@@ -155,7 +153,7 @@ A 5 V / 2 A charger is plenty. A laptop port can usually flash it. If the board 
 
 1. Bridge the OTG pad, flash the bench board, plug in the handset, and make a test call with one button.
 2. Breadboard the hook sensor: does the earpiece magnet trip it? Confirm on the setup page.
-3. Set the MT3608 to 12 V, then build the ULN2803A board and light one lamp.
+3. Set the MT3608 to 12 V, then wire the ULN2803A breakout and light one lamp.
 4. Wire all five buttons with the harness and lever connectors on the bench.
 5. Build the enclosure around the tested harness.
 6. Directory card last.
